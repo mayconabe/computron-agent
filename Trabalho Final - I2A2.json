@@ -1,0 +1,2120 @@
+{
+  "name": "Trabalho Final - I2A2",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/ocr",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"model\": \"mistral-ocr-latest\",\n    \"document\": {\n        \"type\": \"document_url\",\n        \"document_url\": \"{{ $json.url }}\"\n    },\n    \"include_image_base64\": true\n  } ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2416,
+        736
+      ],
+      "id": "eee04408-f3fc-4f9b-8a59-4641110deaae",
+      "name": "Fazer o OCR do documento",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "b2nWQzHOeT7Hjx0W",
+          "name": "Mistral Cloud Account | Trabalho I2A2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.mistral.ai/v1/files/{{ $json.id }}/url?expiry=24",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2640,
+        736
+      ],
+      "id": "bd3695d1-959c-42d2-ac3f-a551e7ccc634",
+      "name": "Gerar URL Assinada do Documento",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "b2nWQzHOeT7Hjx0W",
+          "name": "Mistral Cloud Account | Trabalho I2A2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mistral.ai/v1/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "mistralCloudApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "purpose",
+              "value": "ocr"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2864,
+        736
+      ],
+      "id": "e29691d1-554c-4949-ae77-6a8bfa6f56fd",
+      "name": "Enviar Arquivo para Mistral",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "b2nWQzHOeT7Hjx0W",
+          "name": "Mistral Cloud Account | Trabalho I2A2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nfor (const [itemIndex, item] of $input.all().entries()) {\n  const outputItem = { json: {...item.json} };\n  outputItem.json.processed_by_code_node_v2 = true;\n\n  const mimeType = item.binary?.data?.mimeType;\n  if (!mimeType) {\n    outputItem.json.debug_error_code_node = \"MimeType not found in item.binary.data\";\n    outputItem.json.debug_data_url_output = `ERROR_MIMETYPE_NOT_FOUND_FOR_ITEM_${itemIndex}`;\n    console.log(`⚠️ Item ${itemIndex}: MimeType not found.`);\n    items.push(outputItem);\n    continue;\n  }\n  outputItem.json.debug_mimeType_final = mimeType;\n\n  // Aqui usamos “data” como chave\n  try {\n    const binaryBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, 'data');\n    const base64String = binaryBuffer.toString('base64');\n    if (base64String.length > 0) {\n      outputItem.json.debug_data_url_output = `data:${mimeType};base64,${base64String}`;\n      outputItem.json.debug_base64_length = base64String.length;\n    } else {\n      outputItem.json.debug_error_code_node = \"Base64 conversion resulted in empty string.\";\n      outputItem.json.debug_data_url_output = `ERROR_BASE64_EMPTY_FOR_ITEM_${itemIndex}`;\n      console.log(`⚠️ Item ${itemIndex}: Base64 string is empty.`);\n    }\n  } catch (e) {\n    outputItem.json.debug_error_code_node = `Error during binary processing: ${e.message}`;\n    outputItem.json.debug_data_url_output = `ERROR_CONVERSION_FAILED_FOR_ITEM_${itemIndex}`;\n    console.log(`❌ Item ${itemIndex}: Error reading binary -> ${e.message}`);\n  }\n\n  items.push(outputItem);\n}\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2864,
+        544
+      ],
+      "id": "83cc368c-c32d-4c4f-8123-cb17ffbcf207",
+      "name": "Data_URL1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr.space/parse/image",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "base64image",
+              "value": "={{$json.debug_data_url_output}}"
+            },
+            {
+              "name": "apikey",
+              "value": "K85073331588957"
+            },
+            {
+              "name": "language",
+              "value": "por"
+            },
+            {
+              "name": "OCREngine",
+              "value": "2"
+            },
+            {
+              "name": "detectOrientation",
+              "value": "true"
+            },
+            {
+              "name": "scale",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2640,
+        544
+      ],
+      "id": "386538a5-2a0b-452d-b66b-38e3bbe2b017",
+      "name": "HTTP_Request_OCR1"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\nExtrai exclusivamente a chave de acesso da NFe (44 dígitos) a partir do texto OCR de cada item.\nCorrige erros comuns de OCR como \"S\", \"O\" e \"B\", e armazena a chave limpa no campo chave_acesso_extraida_limpa.\n */\n\nconst items = $input.all();\nconst outputItems = [];\n\n// Regex:\n// 1. Procura por \"CHAVE DE ACESSO\" (opcionalmente) seguido de nova linha e espaços.\n// 2. Captura 11 blocos de 4 caracteres (dígitos ou S,O,B para erros), separados por zero ou mais espaços.\n//    O primeiro bloco é forçado a ser [0-9]{4} para garantir que comece com números.\nconst nfeKeyRegex = /(?:CHAVE DE ACESSO\\s*[\\r\\n]+\\s*)?([0-9]{4}(?:\\s*[0-9SOB]{4}){10})/gi;\n// Explicação:\n// (?:CHAVE DE ACESSO\\s*[\\r\\n]+\\s*)?  - Grupo opcional (não capturado):\n//    CHAVE DE ACESSO             - Literalmente \"CHAVE DE ACESSO\"\n//    \\s*[\\r\\n]+\\s*               - Espaços, uma ou mais novas linhas (\\r\\n ou \\n), espaços\n// ?                               - Torna todo este grupo precedente opcional\n//\n// ([0-9]{4}                       - Grupo de CAPTURA principal (o que queremos):\n//                                  Começa com 4 DÍGITOS\n//   (?:\\s*[0-9SOB]{4}){10}       - Seguido por 10 blocos de:\n//     \\s*                        - zero ou mais espaços\n//     [0-9SOB]{4}                - 4 caracteres (dígito, S, O, ou B)\n// )\n\nconst nonDigitRegex = /[^0-9]/g;\n\nfor (const item of items) {\n  const newItem = { json: { ...item.json } };\n\n  if (newItem.json.ParsedResults && newItem.json.ParsedResults[0] && newItem.json.ParsedResults[0].ParsedText) {\n    const parsedTextSujo = newItem.json.ParsedResults[0].ParsedText;\n    let chaveAcessoCandidata = null;\n    let chaveAcessoLimpa = null;\n    let foundKey = false;\n\n    newItem.json.debug_parsed_text_para_regex = parsedTextSujo.substring(0, 1000);\n\n    // Usar matchAll para iterar sobre todas as possíveis correspondências\n    const matches = parsedTextSujo.matchAll(nfeKeyRegex);\n\n    for (const match of matches) {\n      // O grupo de captura que nos interessa é o segundo (índice 1) se \"CHAVE DE ACESSO\" for encontrado,\n      // ou o primeiro (índice 1 também, pois o grupo opcional não capturado não conta)\n      // se \"CHAVE DE ACESSO\" não for encontrado antes.\n      // A regex foi construída para que match[1] seja sempre a sequência dos 11 blocos.\n      if (match && match[1]) {\n        chaveAcessoCandidata = match[1];\n        newItem.json.debug_chave_candidata_bruta_V4 = chaveAcessoCandidata;\n\n        let tempLimpa = chaveAcessoCandidata\n          .replace(/\\s+/g, '')\n          .replace(/S/gi, '9') // Corrigindo S para 9, como no exemplo 5709\n          .replace(/O/gi, '0')\n          .replace(/B/gi, '8');\n\n        chaveAcessoLimpa = tempLimpa.replace(nonDigitRegex, '');\n\n        newItem.json.debug_chave_limpa_final_V4 = chaveAcessoLimpa;\n\n        if (chaveAcessoLimpa.length === 44) {\n          newItem.json.chave_acesso_extraida_limpa = chaveAcessoLimpa;\n          foundKey = true;\n          break;\n        } else {\n          console.warn(`V4: Candidata não validou: Bruta='${chaveAcessoCandidata}', Limpa='${chaveAcessoLimpa}', Len=${chaveAcessoLimpa.length}`);\n        }\n      }\n    }\n\n    if (!foundKey) {\n      newItem.json.erro_extracao_chave = \"V4: Nenhuma chave de 44 dígitos encontrada.\";\n      if (!newItem.json.debug_chave_candidata_bruta_V4 && parsedTextSujo.includes(\"CHAVE DE ACESSO\")) {\n         console.warn(\"V4: nfeKeyRegex não encontrou correspondência inicial, mas 'CHAVE DE ACESSO' está no texto.\");\n      }\n    }\n\n  } else {\n    newItem.json.erro_extracao_chave = \"ParsedText não encontrado na estrutura esperada.\";\n  }\n  outputItems.push(newItem);\n}\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2416,
+        544
+      ],
+      "id": "d36cd389-b200-4d85-a913-239fc355bff1",
+      "name": "Corrige_Erros_Ext_OCR1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2928,
+        2016
+      ],
+      "id": "3c284348-194b-4f19-9bc9-b9b509261c21",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aPs8Z3AEU5jOmkPd",
+          "name": "Google Gemini(PaLM) Api Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.item.tipoDocumento }}",
+                    "rightValue": "nfse",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "134bc9d1-d382-4c21-a6be-4a60000d1e8a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "05cd611b-063c-4df8-b121-e4e7fea571a2",
+                    "leftValue": "={{ $json.item.tipoDocumento }}",
+                    "rightValue": "nfe",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -3216,
+        1504
+      ],
+      "id": "9b67418d-7f3d-425f-88b2-f38b0afbc1c1",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\n\ndocumentos_fiscais = []\nitems_input = items # Boa prática para não modificar a lista de entrada original\n\nprint(f\"Quantidade de itens recebidos: {len(items_input)}\")\n\nfor i, item in enumerate(items_input):\n    try:\n        # Pega o texto bruto do campo \"output\"\n        texto_bruto = item.json.get(\"output\", \"\")\n        if not texto_bruto:\n            print(f\"Item {i} não possui a chave 'output' ou está vazia. Pulando.\")\n            continue\n\n        # --- CORREÇÃO PRINCIPAL AQUI ---\n        # Limpa a string para remover o encapsulamento de bloco de código Markdown\n        texto_limpo = texto_bruto.strip() # Remove espaços/linhas em branco no início e fim\n        if texto_limpo.startswith(\"```json\"):\n            texto_limpo = texto_limpo[7:] # Remove \"```json\" do início\n        if texto_limpo.endswith(\"```\"):\n            texto_limpo = texto_limpo[:-3] # Remove \"```\" do fim\n        \n        # Limpa novamente para garantir que não há espaços sobrando\n        texto_limpo = texto_limpo.strip()\n        \n        # Faz o parse do JSON já limpo\n        objeto_json = json.loads(texto_limpo)\n\n        # Adiciona o objeto (ou objetos, se a IA retornar uma lista) à nossa lista final\n        if isinstance(objeto_json, list):\n            documentos_fiscais.extend(objeto_json)\n        else:\n            documentos_fiscais.append(objeto_json)\n\n    except json.JSONDecodeError as e:\n        # Um print mais informativo para o caso de erro de parse\n        print(f\"ERRO DE PARSE JSON no item {i}: {e}. Verifique o conteúdo.\")\n    except Exception as e:\n        print(f\"Erro inesperado ao processar item {i}: {e}\")\n\nprint(f\"Total de documentos extraídos: {len(documentos_fiscais)}\")\n\n# Retorna cada documento JSON como um item separado, no formato que o n8n espera\nreturn [{\"json\": doc} for doc in documentos_fiscais]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2640,
+        1216
+      ],
+      "id": "22287164-95c7-4684-81e2-bf7480883668",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e390e642-0b20-4e28-a671-b8421502b5b5",
+                    "leftValue": "={{ $json.status_processamento }}",
+                    "rightValue": "=sucesso",
+                    "operator": {
+                      "type": "number",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status_processamento }}",
+                    "rightValue": "sucesso",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e4ce2a0f-b51d-4b5f-9e10-d78e0672e12f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2416,
+        1216
+      ],
+      "id": "b54b5b4d-93c3-400c-9993-f824e8bc118d",
+      "name": "STATUS_OCR"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2928,
+        1440
+      ],
+      "id": "d465fdfa-c0c9-4a50-b53c-7edcb168ded6",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "aPs8Z3AEU5jOmkPd",
+          "name": "Google Gemini(PaLM) Api Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "35b456d3-17a3-4835-a144-74779ef7ebeb",
+                    "leftValue": "={{ $json.emitente.endereco.municipio }}",
+                    "rightValue": "São Paulo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.emitente.endereco.municipio }}",
+                    "rightValue": "São Paulo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f850b232-466b-4c39-877a-06a617374499"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2192,
+        1312
+      ],
+      "id": "e2f4e367-25c1-431f-9c34-91b33bb387d8",
+      "name": "VALIDA_MUNICIPIO"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1968,
+        640
+      ],
+      "id": "2b6bfb7c-c507-4043-bf2e-bec479815798",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### METADADOS ###\nNome do Arquivo: {{ $json.item.name }}\n\n### TEXTO PRÉ-PROCESSADO (PARA EXTRAÇÃO GERAL) ###\n{{ $json.item.ocr_1 }}\n\n### TEXTO BRUTO DE REFERÊNCIA (FONTE DA VERDADE PARA DADOS SENSÍVEIS) ###\n{{ $json.item.ocr_2 }}\n\n---\n\nPor favor, extraia os dados conforme as regras definidas no sistema, analisando cuidadosamente os dois textos OCR para garantir a extração correta, coerente e confiável.",
+        "options": {
+          "systemMessage": "=# PROMPT MELHORADO PARA EXTRAÇÃO DE DADOS DE NFS-e\n\nVocê é um especialista em extração de dados JSON de notas fiscais eletrônicas (NFS-e). Sua missão é preencher a estrutura JSON de saída usando os textos fornecidos como contexto, aplicando análise inteligente e rigorosa dos dois textos OCR disponíveis.\n\n## ESTRATÉGIA DE ANÁLISE DUAL DOS OCRs\n\nVocê possui dois textos OCR para o mesmo documento:\n- **OCR_1 (Pré-processado)**: texto limpo e estruturado\n- **OCR_2 (Bruto original)**: texto original com possíveis erros\n\n### REGRA CRÍTICA PARA CNPJ/CPF:\n1. **SEMPRE extraia CNPJ/CPF de AMBOS os OCRs**\n2. **Compare os valores encontrados**\n3. **Aplique validação cruzada conforme regras abaixo**\n\n## PROTOCOLO DE VALIDAÇÃO CRUZADA PARA CNPJ/CPF\n\n### PASSO 1: Extração Dupla\nPara cada entidade (emitente/destinatário):\n- Extraia CNPJ/CPF do OCR_1 \n- Extraia CNPJ/CPF do OCR_2\n- Identifique os blocos corretos: \"PRESTADOR\"/\"EMITENTE\" para emitente, \"TOMADOR\"/\"DESTINATÁRIO\" para destinatário\n\n### PASSO 2: Validação e Decisão\nAplique as regras na ordem:\n\n1. **Se ambos OCRs têm o mesmo valor** → Use esse valor\n2. **Se os valores diferem:**\n   - Valide formato: CNPJ (14 dígitos), CPF (11 dígitos)\n   - **Se apenas um tem formato válido** → Use o válido\n   - **Se ambos têm formato válido mas diferem** → Use o valor do OCR_1 (pré-processado)\n   - **Se nenhum tem formato válido** → Use o valor do OCR_1 e marque como \"formato_questionavel\"\n\n3. **Se apenas um OCR contém o valor** → Use o disponível\n\n### PASSO 3: Validação de Coerência\n- **NUNCA use o mesmo CNPJ/CPF para emitente e destinatário**\n- Se detectar duplicação, reavalie a extração dos blocos\n- Em caso de dúvida, priorize OCR_1 para emitente e OCR_2 para destinatário\n\n## REGRAS DE EXTRAÇÃO DETALHADAS\n\n### 1. Campos Gerais (use OCR_1 como principal)\n- numero_nota, data_hora_emissao, codigo_verificacao\n- nome_razao_social, inscricao_municipal  \n- endereço completo, valores financeiros\n\n### 2. Campos Sensíveis (CNPJ/CPF)\n**OBRIGATÓRIO:** Execute o protocolo de validação cruzada acima\n\n### 3. Código do Serviço\n- Procure linha que inicia com código numérico\n- Use a versão mais completa entre os dois OCRs\n\n### 4. Protocolo de CEP\n- Candidato A = CEP do OCR_1\n- Candidato B = CEP do OCR_2\n- **Regras:**\n  - Se A tem formato XXXXX-XXX e B tem XXXXX → use A\n  - Se ambos têm XXXXX-XXX e diferem → use B  \n  - Outros casos → use B\n\n### 5. Validação de ISS\n- Calcule: valor_teste = (base_calculo * aliquota_iss) / 100\n- Se |valor_teste - valor_iss| < 0.01 → mantenha alíquota\n- Senão → recalcule: aliquota = (valor_iss / base_calculo) * 100\n\n## ESTRUTURA JSON DE SAÍDA\n\n```json\n{\n  \"tipo_documento\": \"NFS-e\",\n  \"nome_arquivo\": \"\",\n  \"identificacao\": {\n    \"numero_nota\": \"\",\n    \"data_hora_emissao\": \"\",\n    \"codigo_verificacao\": \"\"\n  },\n  \"emitente\": {\n    \"nome_razao_social\": \"\",\n    \"cnpj_cpf\": \"\",\n    \"inscricao_municipal\": \"\",\n    \"endereco\": {\n      \"logradouro_completo\": \"\",\n      \"municipio\": \"\",\n      \"uf\": \"\",\n      \"cep\": \"\"\n    }\n  },\n  \"destinatario\": {\n    \"nome_razao_social\": \"\",\n    \"cnpj_cpf\": \"\",\n    \"inscricao_municipal\": \"\",\n    \"endereco\": {\n      \"logradouro_completo\": \"\",\n      \"municipio\": \"\",\n      \"uf\": \"\",\n      \"cep\": \"\"\n    }\n  },\n  \"servico\": {\n    \"codigo_descricao_servico\": \"\"\n  },\n  \"valores\": {\n    \"valor_total_servico\": \"0.00\",\n    \"base_calculo\": \"0.00\", \n    \"valor_iss\": \"0.00\",\n    \"aliquota_iss\": \"0.00\"\n  },\n  \"status_processamento\": \"sucesso\"\n}\n```\n\n## EXEMPLO DE RACIOCÍNIO (para referência interna)\n\n**Documento:** nfs_karen-1.pdf\n**Análise CNPJ Emitente:**\n- OCR_1: \"86.815.560/0034-88\" (formato válido)\n- OCR_2: \"06.815.560/0034-88\" (formato válido, mas parece erro OCR)\n- **Decisão:** Usar OCR_1 por ser pré-processado e mais confiável\n- **Resultado:** \"86.815.560/0034-88\"\n\n---\n\n### CONTEXTO PARA EXTRAÇÃO\n\n**METADADOS:**\nNome do Arquivo: {{ $json.item.name }}\n\n**OCR_1 (PRÉ-PROCESSADO):**\n{{ $json.item.ocr_1 }}\n\n**OCR_2 (BRUTO ORIGINAL):**  \n{{ $json.item.ocr_2 }}\n\n---\n\n**EXECUTE a validação cruzada obrigatória para CNPJ/CPF e extraia todos os dados conforme as regras estabelecidas.**",
+          "batching": {
+            "batchSize": 5
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -2992,
+        1216
+      ],
+      "id": "4893276e-007c-4cf4-9b16-9023f38f2f4c",
+      "name": "NFSE-AI-AGENT"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=METADADOS (USE DIRETAMENTE):\nnome_arquivo_fornecido: {{ $json.item.name }}\n\n---\n\nFonte 1 (Texto Bruto - OCR Genérico): \n\n{{ $json.item.ocr_1 }}\n\n---\n\nFonte 2 (Texto Estruturado - Markdown):\n\n{{ $json.item.ocr_2 }}",
+        "options": {
+          "systemMessage": "=Você é um auditor de dados de elite, com a capacidade de detectar e corrigir erros de formatação nas fontes de dados. Sua tarefa é analisar as fontes de dados fornecidas e gerar um único JSON perfeito, seguindo as regras e exceções abaixo.\nLÓGICA FUNDAMENTAL: HIERARQUIA E EXCEÇÕES\n\n    Regra Fundamental (Prioridade Máxima):\n    O campo \"nome_arquivo\" na saída JSON DEVE ser o valor exato do 'Nome do Arquivo' fornecido na seção \"METADADOS\" do contexto. Copie este valor diretamente, sem alterações.\n\n    Regra Geral:\n    Use o Markdown (Fonte 2) como base para extração, pois sua estrutura geralmente é melhor. Use o Texto Bruto (Fonte 1) para verificar e preencher lacunas.\n\n    Exceção Crítica:\n    A tabela CÁLCULO DO IMPOSTO no Markdown pode estar desalinhada. Use lógica especial para corrigir isso conforme detalhado abaixo.\n\nINSTRUÇÕES DE EXTRAÇÃO (SEJA METICULOSO):\n\n    Impostos PIS e COFINS (PROTOCOLO DE DETETIVE VISUAL):\n\n        Ignore a estrutura da tabela.\n\n        Localize o rótulo \"VALOR DO PIS\" e associe o valor numérico próximo (ex: 11,34) ao campo \"valor_pis\".\n\n        Faça o mesmo para \"VALOR DA COFINS\" (ex: 52,32) para \"valor_cofins\".\n\n        Se os valores não existirem, preencha com \"0.00\".\n\n    Chave de Acesso (Identificador Único):\n\n        Localize o rótulo \"CHAVE DE ACESSO\" no texto bruto ou markdown.\n\n        Extraia a sequência numérica que a segue, removendo todos os espaços.\n\n        Associe ao campo \"chave_acesso\" como string contínua de 44 dígitos.\n\n    Data e Hora de Emissão:\n\n        Localize \"DATA DA EMISSÃO\" no texto bruto ou markdown.\n\n        Extraia a data (ex: 08/04/2024).\n\n        Se disponível, combine com a hora próxima (ex: 14:44:38) no formato \"DD/MM/AAAA HH:MM:SS\".\n\n        Caso não haja hora, use somente a data.\n\n        Preencha o campo \"data_hora_emissao\".\n\n    Endereços do Emitente e Destinatário:\n\n        Extraia preferencialmente do Markdown (Fonte 2).\n\n        Se os dados parecerem incorretos ou abreviados, descarte e use o Texto Bruto (Fonte 1).\n\n        Normalize abreviações (ex: \"Sao Paulo\" → \"São Paulo\").\n\n    Descrição dos Produtos (Obrigatória):\n\n        Extraia a descrição completa e legível para cada produto da tabela de produtos.\n\n        Se a descrição estiver ausente, vazia ou ilegível no markdown, utilize o texto bruto para preencher.\n\n        A descrição do produto é obrigatória e não pode ser vazia ou apenas espaços.\n\n    Código NCM para Todos os Produtos:\n\n        Extraia o código NCM para cada produto individualmente.\n\n        Se a tabela estiver desalinhada, corrija usando o texto bruto.\n\n        Nunca deixe o campo \"ncm\" vazio ou incorreto se o valor estiver visível na nota.\n\n        Inclua o campo \"produto_0_ncm\", \"produto_1_ncm\" etc. conforme o índice do produto.\n\n    Valores Numéricos:\n\n        Converta todas as vírgulas para pontos.\n\n        Remova espaços em branco.\n\n        Use o formato string com ponto decimal (ex: \"123.45\").\n\n        Para valores ausentes, preencha com \"0.00\".\n\n    Demais Campos:\n\n        Extraia os demais campos (identificação, totais, natureza da operação) priorizando o Markdown.\n\n        Use o Texto Bruto para verificação e preenchimento de lacunas.\n\nREGRAS DE FORMATAÇÃO:\n\n    A saída deve ser APENAS o objeto JSON, puro e válido.\n\n    Todos os valores numéricos devem estar em formato string com ponto decimal.\n\n    Mantenha a estrutura obrigatória conforme o modelo abaixo.\n\nEXEMPLO (One-Shot)\n\nEntrada: Documento com tabela desalinhada, descrição do produto ausente no markdown, NCM presente no texto bruto.\n\nSaída esperada:\n{\n  \"tipo_documento\": \"NF-e\",\n  \"nome_arquivo\": \"ExemploNotaFiscal.pdf\",\n  \"natureza_operacao\": \"Venda de mercadorias\",\n  \"identificacao\": {\n    \"numero_nota\": \"123456\",\n    \"serie\": \"001\",\n    \"chave_acesso\": \"35241234623312000173550020000245851532898575\",\n    \"data_hora_emissao\": \"11/12/2024 19:42:33\"\n  },\n  \"emitente\": {\n    \"nome_razao_social\": \"Empresa Exemplo LTDA\",\n    \"cnpj_cpf\": \"34.623.312/0001-73\",\n    \"inscricao_estadual\": \"126615963111\",\n    \"endereco\": {\n      \"logradouro_completo\": \"Rua Exemplo, 123\",\n      \"bairro\": \"Centro\",\n      \"municipio\": \"São Paulo\",\n      \"uf\": \"SP\",\n      \"cep\": \"01001000\"\n    }\n  },\n  \"destinatario\": {\n    \"nome_razao_social\": \"Cliente Exemplo\",\n    \"cnpj_cpf\": \"524.113.111-68\",\n    \"inscricao_estadual\": \"0830060600163\",\n    \"endereco\": {\n      \"logradouro_completo\": \"Quadra SMP Quadra 1 Conjunto 4, 5- Lote 01\",\n      \"bairro\": \"Park Way\",\n      \"municipio\": \"Brasília\",\n      \"uf\": \"DF\",\n      \"cep\": \"71735104\"\n    }\n  },\n  \"produtos\": [\n    {\n      \"descricao\": \"Produto Exemplo 1\",\n      \"quantidade\": \"1.00\",\n      \"valor_unitario\": \"26.61\",\n      \"valor_total\": \"26.61\",\n      \"ncm\": \"85369090\"\n    },\n    {\n      \"descricao\": \"Produto Exemplo 2\",\n      \"quantidade\": \"1.00\",\n      \"valor_unitario\": \"30.04\",\n      \"valor_total\": \"30.04\",\n      \"ncm\": \"85369090\"\n    }\n  ],\n  \"produto_0_ncm\": \"85369090\",\n  \"produto_1_ncm\": \"85369090\",\n  \"valores\": {\n    \"valor_pis\": \"0.00\",\n    \"valor_cofins\": \"0.00\",\n    \"valor_total_produtos\": \"56.65\",\n    \"desconto\": \"0.00\",\n    \"valor_total_nota\": \"56.65\"\n  },\n  \"tributos_aproximados\": {\n    \"valor\": \"21.95\",\n    \"aliquota\": \"0.00\"\n  }\n}\n",
+          "batching": {
+            "batchSize": 5
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -2992,
+        1792
+      ],
+      "id": "ea4586c8-3545-4092-b4f4-6dcf5f64a5c1",
+      "name": "NFE AI Agent1"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import json\n\ndocumentos_fiscais = []\nitems_input = items  # Mantém a lista original intacta\n\nprint(f\"Quantidade de itens recebidos: {len(items_input)}\")\n\nfor i, item in enumerate(items_input):\n    documento = {\n        \"status_processamento\": \"\",\n        \"mensagem_erro\": \"\",\n        \"dados\": {}\n    }\n\n    try:\n        # Extrai o texto bruto\n        texto_bruto = item.json.get(\"output\", \"\")\n        if not texto_bruto:\n            mensagem = f\"Item {i} não possui a chave 'output' ou está vazia. Pulando.\"\n            print(mensagem)\n            documento[\"status_processamento\"] = \"ERRO\"\n            documento[\"mensagem_erro\"] = mensagem\n            documentos_fiscais.append(documento)\n            continue\n\n        # Limpeza do markdown\n        texto_limpo = texto_bruto.strip()\n        if texto_limpo.startswith(\"```json\"):\n            texto_limpo = texto_limpo[7:]\n        if texto_limpo.endswith(\"```\"):\n            texto_limpo = texto_limpo[:-3]\n        texto_limpo = texto_limpo.strip()\n\n        # Parse do JSON\n        objeto_json = json.loads(texto_limpo)\n\n        # Caso retorne uma lista\n        if isinstance(objeto_json, list):\n            for obj in objeto_json:\n                documentos_fiscais.append({\n                    \"status_processamento\": \"SUCESSO\",\n                    \"mensagem_erro\": \"\",\n                    \"dados\": obj\n                })\n        else:\n            documento[\"status_processamento\"] = \"SUCESSO\"\n            documento[\"dados\"] = objeto_json\n            documentos_fiscais.append(documento)\n\n    except json.JSONDecodeError as e:\n        mensagem = f\"ERRO DE PARSE JSON no item {i}: {e}. Verifique o conteúdo.\"\n        print(mensagem)\n        documento[\"status_processamento\"] = \"ERRO\"\n        documento[\"mensagem_erro\"] = mensagem\n        documentos_fiscais.append(documento)\n\n    except Exception as e:\n        mensagem = f\"Erro inesperado ao processar item {i}: {e}\"\n        print(mensagem)\n        documento[\"status_processamento\"] = \"ERRO\"\n        documento[\"mensagem_erro\"] = mensagem\n        documentos_fiscais.append(documento)\n\nprint(f\"Total de documentos extraídos: {len(documentos_fiscais)}\")\n\n# Saída no padrão do n8n\nreturn [{\"json\": doc} for doc in documentos_fiscais]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2640,
+        1792
+      ],
+      "id": "fe1b652e-ca29-4932-b495-04af8f7e6dbd",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.dados.emitente.endereco.municipio }}",
+                    "rightValue": "São Paulo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f850b232-466b-4c39-877a-06a617374499"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "35b456d3-17a3-4835-a144-74779ef7ebeb",
+                    "leftValue": "={{ $json.dados.emitente.endereco.municipio }}",
+                    "rightValue": "São Paulo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2192,
+        1696
+      ],
+      "id": "530c0296-e1a6-442b-96b6-df6de6c78392",
+      "name": "VALIDA_MUNICIPIO1"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import re\nfrom datetime import datetime\n\ndef limpar_numero(valor):\n    \"\"\"Remove todos os caracteres não numéricos de uma string.\"\"\"\n    if isinstance(valor, str):\n        return re.sub(r'\\D', '', valor)\n    return str(valor) if valor is not None else \"\"\n\ndef validar_cpf(cpf):\n    \"\"\"Valida CPF segundo regras oficiais.\"\"\"\n    cpf = limpar_numero(cpf)\n    if not cpf or len(cpf) != 11 or cpf == cpf[0] * 11:\n        return False\n    soma = sum(int(cpf[i]) * (10 - i) for i in range(9))\n    dig1 = (soma * 10 % 11) % 10\n    soma = sum(int(cpf[i]) * (11 - i) for i in range(10))\n    dig2 = (soma * 10 % 11) % 10\n    return cpf[-2:] == f\"{dig1}{dig2}\"\n\ndef validar_cnpj(cnpj):\n    \"\"\"Valida CNPJ segundo regras oficiais corrigidas.\"\"\"\n    cnpj = limpar_numero(cnpj)\n    if not cnpj or len(cnpj) != 14 or cnpj == cnpj[0] * 14:\n        return False\n    pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]\n    soma1 = sum(int(cnpj[i]) * pesos1[i] for i in range(12))\n    resto1 = soma1 % 11\n    dig1 = 0 if resto1 < 2 else 11 - resto1\n    pesos2 = [6] + pesos1\n    soma2 = sum(int(cnpj[i]) * pesos2[i] for i in range(13))\n    resto2 = soma2 % 11\n    dig2 = 0 if resto2 < 2 else 11 - resto2\n    return cnpj[-2:] == f\"{dig1}{dig2}\"\n\ndef validar_cpf_cnpj(valor):\n    \"\"\"Valida se o valor é CPF ou CNPJ válido.\"\"\"\n    if not valor:\n        return False\n    return validar_cpf(valor) or validar_cnpj(valor)\n\ndef validar_data_flexivel(data_str):\n    \"\"\"Valida datas em vários formatos comuns.\"\"\"\n    if not data_str or not isinstance(data_str, str):\n        return False\n    formatos_para_tentar = [\n        '%d/%m/%Y %H:%M:%S',\n        '%d/%m/%Y',\n        '%Y-%m-%d %H:%M:%S',\n        '%Y-%m-%d',\n    ]\n    for formato in formatos_para_tentar:\n        try:\n            datetime.strptime(data_str.strip(), formato)\n            return True\n        except ValueError:\n            continue\n    return False\n\ndef validar_codigo_verificacao_flexivel(codigo):\n    \"\"\"Valida código de verificação flexível (4 a 12 caracteres alfanuméricos, hífen opcional).\"\"\"\n    if not codigo or not isinstance(codigo, str):\n        return False\n    codigo_limpo = codigo.replace('-', '').strip()\n    return bool(codigo_limpo and codigo_limpo.isalnum() and 4 <= len(codigo_limpo) <= 12)\n\ndef iss_valido(base_calculo, aliquota, valor_iss):\n    \"\"\"Valida cálculo do ISS com tolerância para arredondamento.\"\"\"\n    try:\n        bc_str = str(base_calculo) if base_calculo is not None else \"0\"\n        aliq_str = str(aliquota) if aliquota is not None else \"0\"\n        iss_str = str(valor_iss) if valor_iss is not None else \"0\"\n        bc = float(bc_str.replace(',', '.'))\n        aliq = float(aliq_str.replace(',', '.'))\n        iss = float(iss_str.replace(',', '.'))\n        calculado = round(bc * (aliq / 100), 2)\n        return abs(calculado - iss) <= 0.05\n    except (ValueError, TypeError):\n        return False\n\ndef validar_item(dados):\n    \"\"\"Valida um item completo com todas as regras definidas.\"\"\"\n    erros = {}\n\n    cpf_cnpj_emit = (\n        dados.get(\"emitente\", {}).get(\"cpf_cnpj\") or\n        dados.get(\"emitente\", {}).get(\"cnpj_cpf\")\n    )\n    if not validar_cpf_cnpj(cpf_cnpj_emit):\n        erros[\"emitente_cpf_cnpj\"] = \"CPF/CNPJ do emitente inválido ou ausente\"\n\n    data_emissao = (\n        dados.get(\"identificacao\", {}).get(\"data_emissao\") or\n        dados.get(\"identificacao\", {}).get(\"data_hora_emissao_nfse\") or\n        dados.get(\"identificacao\", {}).get(\"data_hora_emissao\")\n    )\n    if not validar_data_flexivel(data_emissao):\n        erros[\"data_emissao\"] = \"Data de emissão com formato inválido ou ausente\"\n\n    codigo_verificacao = dados.get(\"identificacao\", {}).get(\"codigo_verificacao\")\n    if not validar_codigo_verificacao_flexivel(codigo_verificacao):\n        erros[\"codigo_verificacao\"] = \"Código de verificação inválido ou ausente\"\n\n    numero_nf = (\n        dados.get(\"identificacao\", {}).get(\"numero\") or\n        dados.get(\"identificacao\", {}).get(\"numero_nfse\") or\n        dados.get(\"identificacao\", {}).get(\"numero_nota\")\n    )\n    numero_limpo = limpar_numero(numero_nf)\n    if not numero_limpo or not numero_limpo.isdigit() or len(numero_limpo) > 15:\n        erros[\"numero_nf\"] = \"Número da nota inválido (deve conter apenas números, máximo 15 dígitos)\"\n\n    valores = dados.get(\"valores\", {})\n    base = valores.get(\"base_calculo\") or valores.get(\"valor_total_servico\")\n    aliquota = valores.get(\"aliquota_iss\") or valores.get(\"aliquota\")\n    valor_iss = valores.get(\"valor_iss\")\n\n    if base and str(base).replace(',', '.') not in [\"0\", \"0.00\"]:\n        if not all([aliquota, valor_iss]):\n            erros[\"calculo_iss\"] = \"Dados insuficientes para validar o ISS (base, alíquota ou valor ausentes)\"\n        elif not iss_valido(base, aliquota, valor_iss):\n            erros[\"calculo_iss\"] = \"Valor do ISS divergente do cálculo (base * alíquota)\"\n\n    return {\n        \"valido\": len(erros) == 0,\n        \"erros\": erros,\n        \"dados_originais\": dados\n    }\n\n# Processa todos os itens de entrada e retorna no formato esperado pelo n8n\nresultados = [validar_item(item['json']) for item in items]\nreturn [{'json': resultado} for resultado in resultados]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        1408
+      ],
+      "id": "0b17cb4e-a494-4dad-a870-71a2bc8bef49",
+      "name": "VALIDA_NFSE"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1744,
+        1504
+      ],
+      "id": "c24d07d9-7c86-4136-9726-817dc2d8993d",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Divide ao meio\nconst half = Math.floor(items.length / 2);\nconst firstHalf = items.slice(0, half);\nconst secondHalf = items.slice(half);\n\n// Combina par a par com chaves \"ocr_1\" e \"ocr_2\"\nconst output = [];\n\nfor (let i = 0; i < Math.min(firstHalf.length, secondHalf.length); i++) {\n  output.push({\n    json: {\n      ocr_1: firstHalf[i].json,\n      ocr_2: secondHalf[i].json\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        912
+      ],
+      "id": "bd4ad881-8068-4e23-b2d7-a4c61686749f",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6cb1c5df-01f5-46da-8b5b-b4305303dd5b",
+              "name": "item.ocr_1",
+              "value": "={{ $json.ocr_1.texto }}",
+              "type": "string"
+            },
+            {
+              "id": "21d5a50a-f4fc-4ad4-bb6b-c614425e6780",
+              "name": "item.ocr_2",
+              "value": "={{ $json.ocr_2.texto }}",
+              "type": "string"
+            },
+            {
+              "id": "a6fb4364-7438-4e80-860d-af5cebd8d830",
+              "name": "item.tipoDocumento",
+              "value": "={{ $json.ocr_1.tipoDocumento }}",
+              "type": "string"
+            },
+            {
+              "id": "bfd029cc-4a3c-4610-98c2-e7d1afa3870d",
+              "name": "item.name",
+              "value": "={{ $json.ocr_1.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3440,
+        1504
+      ],
+      "id": "a5981e56-80bd-4303-9ab5-65d6406efc9c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9908c412-873c-4b24-86fe-27335c69e435",
+              "name": "texto",
+              "value": "={{ $json.ParsedResults[0].ParsedText }}",
+              "type": "string"
+            },
+            {
+              "id": "0e523db4-709c-4995-af45-b211522d53d0",
+              "name": "tipoDocumento",
+              "value": "={{ $('On form submission').item.json['Tipo NF'].toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "c179e627-5023-491a-8c66-91503930b90d",
+              "name": "name",
+              "value": "={{ $('On form submission').item.json.data[0].filename }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2192,
+        544
+      ],
+      "id": "521c1bfe-3f8b-4ece-9860-a0b652d2bca7",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "712ada69-1a9f-4f68-bae1-8e30ceb0c14b",
+              "name": "texto",
+              "value": "={{ $json.pages[0].markdown }}",
+              "type": "string"
+            },
+            {
+              "id": "4c1ec701-1370-4ab2-b7fb-cd9e6f913d4c",
+              "name": "tipoDocumento",
+              "value": "={{ $('Merge2').item.json['Tipo NF'].toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "31800250-f8d5-40f7-9db6-21053804d8cb",
+              "name": "name",
+              "value": "={{ $('Merge2').item.json.data[0].filename }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2192,
+        736
+      ],
+      "id": "09a8a5fb-9e95-40a0-a328-211c1dff8e87",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1789029-12e2-42e1-a944-c28c50cf7590",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e7a16602-e4b3-40cb-83e6-836b60c2f228",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "d264d366-8a81-4076-b41b-2fd09943d9a7",
+              "name": "tipoDocumento",
+              "value": "nfse",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3312,
+        352
+      ],
+      "id": "7882b9a0-4278-4ef6-80a5-6861f764e8f2",
+      "name": "DefineCamposNFSE"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1789029-12e2-42e1-a944-c28c50cf7590",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e7a16602-e4b3-40cb-83e6-836b60c2f228",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "d264d366-8a81-4076-b41b-2fd09943d9a7",
+              "name": "tipoDocumento",
+              "value": "nfe",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3312,
+        928
+      ],
+      "id": "98a6e050-1bd5-4b4c-a357-3cfe46c31fa7",
+      "name": "DefineCamposNFE"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === FUNÇÕES AUXILIARES ===\n\nfunction limparNumero(valor) {\n  if (typeof valor === 'string') {\n    return valor.replace(/\\D/g, '').trim();\n  }\n  return valor != null ? String(valor).trim() : '';\n}\n\nfunction removerAcentos(txt) {\n  if (typeof txt !== 'string') return '';\n  return txt.normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();\n}\n\nfunction validarCNPJ(cnpj) {\n  cnpj = limparNumero(cnpj);\n  if (!cnpj || cnpj.length !== 14 || /^(\\d)\\1{13}$/.test(cnpj)) return false;\n  const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];\n  const pesos2 = [6].concat(pesos1);\n  let soma1 = 0;\n  for (let i = 0; i < 12; i++) soma1 += parseInt(cnpj.charAt(i)) * pesos1[i];\n  let dig1 = 11 - (soma1 % 11);\n  if (dig1 >= 10) dig1 = 0;\n  if (dig1 !== parseInt(cnpj.charAt(12))) return false;\n  let soma2 = 0;\n  for (let i = 0; i < 13; i++) soma2 += parseInt(cnpj.charAt(i)) * pesos2[i];\n  let dig2 = 11 - (soma2 % 11);\n  if (dig2 >= 10) dig2 = 0;\n  return dig2 === parseInt(cnpj.charAt(13));\n}\n\nfunction validarCPF(cpf) {\n  cpf = limparNumero(cpf);\n  if (!cpf || cpf.length !== 11 || /^(\\d)\\1{10}$/.test(cpf)) return false;\n  let soma = 0;\n  for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);\n  let dig1 = (soma * 10) % 11;\n  if (dig1 === 10) dig1 = 0;\n  if (dig1 !== parseInt(cpf.charAt(9))) return false;\n  soma = 0;\n  for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);\n  let dig2 = (soma * 10) % 11;\n  if (dig2 === 10) dig2 = 0;\n  return dig2 === parseInt(cpf.charAt(10));\n}\n\nfunction validarCpfCnpj(valor) {\n  const doc = limparNumero(valor);\n  if (doc.length === 11) return validarCPF(doc);\n  if (doc.length === 14) return validarCNPJ(doc);\n  return false;\n}\n\nfunction validarNumeroNota(numero) {\n  return /^\\d{1,15}$/.test(limparNumero(numero));\n}\n\nfunction validarSerie(serie) {\n  return typeof serie === 'string' && /^[A-Za-z0-9]{1,3}$/.test(serie.trim());\n}\n\nfunction validarDataFlexivel(dataStr) {\n  const formatos = [\n    /^\\d{2}\\/\\d{2}\\/\\d{4} \\d{2}:\\d{2}:\\d{2}$/,\n    /^\\d{2}\\/\\d{2}\\/\\d{4}$/,\n    /^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/,\n    /^\\d{4}-\\d{2}-\\d{2}$/,\n    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$/\n  ];\n  return formatos.some(f => f.test((dataStr || '').trim()));\n}\n\nfunction parseFloatBR(valor) {\n  if (valor == null || valor === '') return 0.0;\n  const str = String(valor).replace(',', '.').trim();\n  const num = parseFloat(str);\n  return isNaN(num) ? 0.0 : num;\n}\n\nfunction valorTotalValido(produtos, desconto, valorTotal) {\n  try {\n    const soma = produtos.reduce((acc, p) => {\n      const total = parseFloatBR(p?.valor_total);\n      return acc + (isNaN(total) ? 0 : total);\n    }, 0);\n    const descontoVal = parseFloatBR(desconto);\n    const total = parseFloatBR(valorTotal);\n    const calculado = Math.round((soma - descontoVal) * 100) / 100;\n    return Math.abs(calculado - total) <= 0.05;\n  } catch {\n    return false;\n  }\n}\n\nfunction validarChaveAcesso(chave) {\n  chave = limparNumero(chave);\n  if (chave.length !== 44 || !/^\\d{44}$/.test(chave)) return false;\n  const base = [4, 3, 2, 9, 8, 7, 6, 5];\n  let pesos = [];\n  for (let i = 0; pesos.length < 43; i++) pesos.push(base[i % base.length]);\n  let soma = 0;\n  for (let i = 0; i < 43; i++) soma += parseInt(chave.charAt(i)) * pesos[i];\n  const resto = soma % 11;\n  let digito = 11 - resto;\n  if (digito >= 10) digito = 0;\n  return parseInt(chave.charAt(43)) === digito;\n}\n\nfunction validarCepFormato(cep) {\n  return /^\\d{5}-?\\d{3}$/.test((cep || '').trim());\n}\n\nfunction impostoValido(base, aliquota, valor) {\n  const b = parseFloatBR(base);\n  const a = parseFloatBR(aliquota);\n  const v = parseFloatBR(valor);\n  if (!isFinite(b) || !isFinite(a) || !isFinite(v)) return false;\n  if (b === 0 && v === 0) return true;\n  const calc = Math.round(b * (a / 100) * 100) / 100;\n  return Math.abs(calc - v) <= 0.05;\n}\n\nfunction validarTributosAproximados(base, percentual, valor) {\n  const b = parseFloatBR(base);\n  const p = parseFloatBR(percentual);\n  const v = parseFloatBR(valor);\n  if (!isFinite(b) || !isFinite(p) || !isFinite(v)) return false;\n  if (b === 0) return v === 0;\n  const calc = Math.round(b * (p / 100) * 100) / 100;\n  return Math.abs(calc - v) <= 0.05;\n}\n\nfunction validarIndicadorPresenca(valor) {\n  const validos = ['0', '1', '2', '3', '4', '5', '9'];\n  return validos.includes(String(valor));\n}\n\n// === FUNÇÃO PRINCIPAL ===\n\nasync function validarNfe(lista) {\n  const resultados = [];\n\n  for (const itemN8n of lista) {\n    const erros = {};\n    const nota = itemN8n?.json?.dados || {};\n    const id = nota.identificacao || {};\n    const emit = nota.emitente || {};\n    const dest = nota.destinatario || {};\n    const vals = nota.valores || {};\n    const produtos = nota.produtos || [];\n    const trib = nota.tributos_aproximados || {};\n\n    if (!validarCNPJ(emit.cnpj_cpf)) erros.emitente_cnpj = \"CNPJ do emitente inválido ou ausente\";\n    if (!validarCpfCnpj(dest.cnpj_cpf)) erros.destinatario_cpf_cnpj = \"CPF/CNPJ do destinatário inválido ou ausente\";\n    if (!validarNumeroNota(id.numero_nota)) erros.numero_nota = \"Número da nota inválido\";\n    if (!validarSerie(id.serie)) erros.serie = \"Série da nota inválida (deve ser alfanumérica até 3 caracteres)\";\n    if (!validarDataFlexivel(id.data_hora_emissao)) erros.data_emissao = \"Data de emissão com formato inválido ou ausente\";\n    if (id.chave_acesso && !validarChaveAcesso(id.chave_acesso)) erros.chave_acesso = \"Chave de acesso inválida\";\n    if (id.indicador_presenca && !validarIndicadorPresenca(id.indicador_presenca)) {\n      erros.indicador_presenca = \"Indicador de presença inválido (deve ser 0, 1, 2, 3, 4, 5 ou 9)\";\n    }\n    if (!valorTotalValido(produtos, vals.desconto, vals.valor_total_nota)) {\n      erros.valor_total = \"Valor total da nota não confere com soma dos produtos - desconto\";\n    }\n    if (parseFloatBR(vals.valor_pis) > 0 && parseFloatBR(vals.base_calculo_pis) <= 0) {\n      erros.pis_base = \"Base de cálculo do PIS ausente ou inválida quando há valor de PIS\";\n    }\n    if (parseFloatBR(vals.valor_cofins) > 0 && parseFloatBR(vals.base_calculo_cofins) <= 0) {\n      erros.cofins_base = \"Base de cálculo do COFINS ausente ou inválida quando há valor de COFINS\";\n    }\n\n    const baseTrib = parseFloatBR(vals.valor_total_produtos || vals.valor_total_nota);\n    const tribValor = parseFloatBR(trib.valor);\n    const tribAliquota = parseFloatBR(trib.aliquota);\n\n    if (tribValor > 0) {\n      if (tribAliquota > 0) {\n        if (!validarTributosAproximados(baseTrib, tribAliquota, tribValor)) {\n          erros.tributos_aproximados = \"Valor dos tributos aproximados não confere com o cálculo (base * alíquota)\";\n        }\n      } else {\n        // Alíquota zero, não valida cálculo, pois IBPT é valor informativo\n        // Apenas verifica se valor é numérico e positivo (já garantido acima)\n      }\n    }\n\n    if (!produtos || produtos.length === 0) {\n      erros.produtos = \"Lista de produtos está ausente ou vazia\";\n    } else {\n      produtos.forEach((p, i) => {\n        // Busca o NCM dentro do produto ou no campo externo produto_i_ncm\n        const ncmProduto = p.ncm || nota[`produto_${i}_ncm`];\n\n        if (!p.descricao || !p.descricao.trim()) erros[`produto_${i}_descricao`] = `Descrição do produto ${i + 1} está ausente`;\n        if (!p.valor_unitario || parseFloatBR(p.valor_unitario) <= 0) erros[`produto_${i}_valor`] = `Valor unitário do produto ${i + 1} inválido`;\n        if (!p.quantidade || parseFloatBR(p.quantidade) <= 0) erros[`produto_${i}_quantidade`] = `Quantidade do produto ${i + 1} inválida`;\n        if (!ncmProduto || !/^\\d{8}$/.test(limparNumero(ncmProduto))) erros[`produto_${i}_ncm`] = `NCM do produto ${i + 1} inválido ou ausente`;\n      });\n    }\n\n    resultados.push({\n      json: {\n        valido: Object.keys(erros).length === 0,\n        erros,\n        dados_originais: itemN8n.json\n      }\n    });\n  }\n\n  return resultados;\n}\n\n// === EXECUÇÃO NO N8N ===\n\nreturn await validarNfe(items);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1968,
+        1600
+      ],
+      "id": "7db8da88-48b4-4f9f-bf9d-d18a1fd58889",
+      "name": "VALIDA_NFE"
+    },
+    {
+      "parameters": {
+        "jsCode": "function substituirEmpty(valor) {\n  if (typeof valor === 'string') {\n    return valor.trim() === '' || valor.trim() === '[empty]' ? '-' : valor;\n  }\n  if (valor === null || valor === undefined) {\n    return '-';\n  }\n  return valor;\n}\n\nfunction substituirEmptyRecursivo(obj) {\n  if (Array.isArray(obj)) {\n    return obj.map(substituirEmptyRecursivo);\n  } else if (typeof obj === 'object' && obj !== null) {\n    const novo = {};\n    for (const [k, v] of Object.entries(obj)) {\n      novo[k] = substituirEmptyRecursivo(v);\n    }\n    return novo;\n  } else {\n    return substituirEmpty(obj);\n  }\n}\n\nconst agora = new Date();\nconst data_validacao = agora.toISOString().split('T')[0];\nconst hora_validacao = agora.toTimeString().split(' ')[0];\n\nconst output = [];\n\nfor (const item of items) {\n  const json_data = item.json;\n  const valido = json_data.valido || false;\n  const erros = json_data.erros || {};\n\n  const erro_str = Object.keys(erros).length > 0\n    ? Object.entries(erros).map(([campo, msg]) => `${campo}: ${msg}`).join('; ')\n    : '-';\n\n  const dado = json_data.dados_originais || {};\n  const dados = (dado.dados && typeof dado.dados === 'object') ? dado.dados : dado;\n\n  const identificacao = dados.identificacao || {};\n  const emitente = dados.emitente || {};\n  const destinatario = dados.destinatario || {};\n  const valores = dados.valores || {};\n  const tributos = dados.tributos_aproximados || {};\n\n  const registro = {\n    data_validacao,\n    hora_validacao,\n    valido,\n    erro: erro_str,\n    tipo_documento: dados.tipo_documento || '-',\n    nome_arquivo: dados.nome_arquivo || '-',\n    numero_nota: identificacao.numero_nota || '-',\n    data_emissao: identificacao.data_hora_emissao || '-',\n    codigo_verificacao: identificacao.codigo_verificacao || '-',\n    chave_acesso: identificacao.chave_acesso || '-',\n    emitente_nome: emitente.nome_razao_social || '-',\n    destinatario_nome: destinatario.nome_razao_social || '-',\n    valor_total: valores.valor_total_nota || valores.valor_total_servico || '-',\n    desconto: valores.desconto || '-',\n    valor_pis: valores.valor_pis || '-',\n    valor_cofins: valores.valor_cofins || '-',\n    valor_total_produtos: valores.valor_total_produtos || '-',\n    tributos_valor: tributos.valor || '-',\n    tributos_aliquota: tributos.aliquota || '-',\n    base_calculo: valores.base_calculo || '-',\n    valor_iss: valores.valor_iss || '-',\n    aliquota_iss: valores.aliquota_iss || '-'\n  };\n\n  const registro_limpo = substituirEmptyRecursivo(registro);\n  output.push({ json: registro_limpo });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        1504
+      ],
+      "id": "cab17a28-60ba-4a0d-bff5-cdd6912c549b",
+      "name": "GERA_RELATORIO"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Processadas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "={{ $json.numero_nota }}9",
+            "data_validacao": "={{ $json.data_validacao }}",
+            "hora_validacao": "={{ $json.hora_validacao }}",
+            "valido": "={{ $json.valido }}",
+            "erro": "={{ $json.erro }}",
+            "tipo_documento": "={{ $json.tipo_documento }}",
+            "nome_arquivo": "={{ $json.nome_arquivo }}",
+            "data_emissao": "={{ $json.data_emissao }}",
+            "codigo_verificacao": "={{ $json.codigo_verificacao }}",
+            "chave_acesso": "={{ $json.chave_acesso }}",
+            "emitente_nome": "={{ $json.emitente_nome }}",
+            "destinatario_nome": "={{ $json.destinatario_nome }}",
+            "valor_total": "={{ $json.valor_total }}",
+            "desconto": "={{ $json.desconto }}",
+            "valor_pis": "={{ $json.valor_pis }}",
+            "valor_cofins": "={{ $json.valor_cofins }}",
+            "valor_total_produtos": "={{ $json.valor_total_produtos }}",
+            "tributos_valor": "={{ $json.tributos_valor }}",
+            "tributos_aliquota": "={{ $json.tributos_aliquota }}",
+            "base_calculo": "={{ $json.base_calculo }}",
+            "valor_iss": "={{ $json.valor_iss }}",
+            "aliquota_iss": "={{ $json.aliquota_iss }}"
+          },
+          "matchingColumns": [
+            "numero_nota"
+          ],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "data_validacao",
+              "displayName": "data_validacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hora_validacao",
+              "displayName": "hora_validacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valido",
+              "displayName": "valido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "erro",
+              "displayName": "erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo_documento",
+              "displayName": "tipo_documento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_emissao",
+              "displayName": "data_emissao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "codigo_verificacao",
+              "displayName": "codigo_verificacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chave_acesso",
+              "displayName": "chave_acesso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "emitente_nome",
+              "displayName": "emitente_nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destinatario_nome",
+              "displayName": "destinatario_nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_total",
+              "displayName": "valor_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "desconto",
+              "displayName": "desconto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_pis",
+              "displayName": "valor_pis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_cofins",
+              "displayName": "valor_cofins",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_total_produtos",
+              "displayName": "valor_total_produtos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tributos_valor",
+              "displayName": "tributos_valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tributos_aliquota",
+              "displayName": "tributos_aliquota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "base_calculo",
+              "displayName": "base_calculo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_iss",
+              "displayName": "valor_iss",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aliquota_iss",
+              "displayName": "aliquota_iss",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1072,
+        1408
+      ],
+      "id": "838f3cc5-26a9-4063-af8a-b37c9e07261b",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Teste",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Tipo NF",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "NFE"
+                  },
+                  {
+                    "option": "NFSE"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "data",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Município (OBS: Só é aceito o município de São Paulo)",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Confirma que é uma de NF de São Paulo?"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -3760,
+        640
+      ],
+      "id": "7e164c84-79a1-4d81-9f6b-c57da136ddcd",
+      "name": "On form submission",
+      "webhookId": "5cd8e10c-6fc2-4573-8b0d-75237f5d3a2e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fef0ee6e-2b0a-4f53-93af-db4cba4a771f",
+              "leftValue": "={{ $json[\"Tipo NF\"] }}",
+              "rightValue": "NFSE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3536,
+        640
+      ],
+      "id": "83a7eb7a-a37a-4388-9154-3ab61436b997",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -3088,
+        640
+      ],
+      "id": "8b14f782-631b-4bd1-9eb0-8415e526995f",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -3312,
+        736
+      ],
+      "id": "15161aeb-81c2-4b18-bf63-13f3d6b846bb",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -3312,
+        544
+      ],
+      "id": "64501c63-22e6-4930-8e5a-5b9a1bd0726a",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 44561095,
+          "mode": "list",
+          "cachedResultName": "Inválidas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=44561095"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "={{ $json.dados.identificacao.numero_nota}}",
+            "motivo": "Município inválido",
+            "nome_arquivo": "={{ $json.dados.nome_arquivo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1968,
+        1792
+      ],
+      "id": "a16894c5-1b05-4b38-90ac-ce9ea4e286fe",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status_processamento }}",
+                    "rightValue": "SUCESSO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2ba3cc89-32a3-4b6a-ab30-e997cb45cd66"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1dc1078b-04f7-4227-88cd-c7284a18a6be",
+                    "leftValue": "={{ $json.status_processamento }}",
+                    "rightValue": "SUCESSO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -2416,
+        1792
+      ],
+      "id": "e68bf9e0-54c7-408e-b1e5-d547f282a0ba",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 44561095,
+          "mode": "list",
+          "cachedResultName": "Inválidas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=44561095"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "=Não indentificado",
+            "motivo": "Erro de OCR",
+            "nome_arquivo": "={{ $json.dados.nome_arquivo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2192,
+        1888
+      ],
+      "id": "ecb9d9aa-d20c-4a4f-9ef9-55eb769c73e6",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 44561095,
+          "mode": "list",
+          "cachedResultName": "Inválidas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=44561095"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "={{ $json.identificacao.numero_nota }}",
+            "motivo": "Município inválido",
+            "nome_arquivo": "={{ $json.nome_arquivo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1968,
+        1216
+      ],
+      "id": "111d9a0b-fc84-4430-9a2e-5f8113dfa0aa",
+      "name": "Append row in sheet3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 44561095,
+          "mode": "list",
+          "cachedResultName": "Inválidas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=44561095"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "={{ $json.identificacao.numero_nota }}",
+            "motivo": "Município inválido",
+            "nome_arquivo": "={{ $json.dados.nome_arquivo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2192,
+        1120
+      ],
+      "id": "f3fb11a2-b678-4b5e-bdbf-55b8210a1ab8",
+      "name": "Append row in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "596be11c-1e60-4aeb-81f4-b486b7c6becb",
+              "leftValue": "={{ $('On form submission').first().json['Tipo NF']}}",
+              "rightValue": "={{(() => {\n  const tipo = $json.tipo_documento || '';\n  return tipo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();\n})()}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        1504
+      ],
+      "id": "b29f7e2b-5099-42e4-a1ad-747c8ce59ba0",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 44561095,
+          "mode": "list",
+          "cachedResultName": "Inválidas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hFlympfsiZ9cRHPnilDHsqhkuU4_n22Dx7Vi5az1AGc/edit#gid=44561095"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "numero_nota": "={{ $json.numero_nota }}",
+            "motivo": "=Tipo da nota informada no formulário incorreto, você selecionou {{ $('On form submission').first().json['Tipo NF']}} mas seu anexo é {{(() => {\n  const tipo = $json.tipo_documento || '';\n  return tipo.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();\n})()}}",
+            "nome_arquivo": "={{ $json.nome_arquivo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "numero_nota",
+              "displayName": "numero_nota",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_arquivo",
+              "displayName": "nome_arquivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "motivo",
+              "displayName": "motivo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1072,
+        1600
+      ],
+      "id": "2c14e251-e5f1-4463-a31d-2f040e154205",
+      "name": "Append row in sheet4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "n5hcMIDhwoO9lbJJ",
+          "name": "Google Sheets Account | filipeandrp@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## NFSE",
+        "height": 464,
+        "width": 1248,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3072,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "e7d54141-8827-417a-bed8-ae7c1d532c84",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## NFE",
+        "height": 576,
+        "width": 1248,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3072,
+        1584
+      ],
+      "typeVersion": 1,
+      "id": "a335b46d-1b55-4c35-a20f-d4e8d05e62ef",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Fazer o OCR do documento": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar URL Assinada do Documento": {
+      "main": [
+        [
+          {
+            "node": "Fazer o OCR do documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Arquivo para Mistral": {
+      "main": [
+        [
+          {
+            "node": "Gerar URL Assinada do Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data_URL1": {
+      "main": [
+        [
+          {
+            "node": "HTTP_Request_OCR1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP_Request_OCR1": {
+      "main": [
+        [
+          {
+            "node": "Corrige_Erros_Ext_OCR1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Corrige_Erros_Ext_OCR1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "NFE AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "NFSE-AI-AGENT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NFE AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "STATUS_OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STATUS_OCR": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "VALIDA_MUNICIPIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "NFSE-AI-AGENT",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VALIDA_MUNICIPIO": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "VALIDA_NFSE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NFSE-AI-AGENT": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NFE AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VALIDA_MUNICIPIO1": {
+      "main": [
+        [
+          {
+            "node": "VALIDA_NFE",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VALIDA_NFSE": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "GERA_RELATORIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "DefineCamposNFSE": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DefineCamposNFE": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "VALIDA_NFE": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "GERA_RELATORIO": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "DefineCamposNFSE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DefineCamposNFE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Data_URL1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Arquivo para Mistral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "VALIDA_MUNICIPIO1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "7cf36246-a6d6-475b-8374-5c180cf168c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "21db8eb72ae12207133cd9d3007401a539984618d7d8c7cbd0f964a43b4d9c5e"
+  },
+  "id": "bTEPMSivVR3RX0ge",
+  "tags": []
+}
